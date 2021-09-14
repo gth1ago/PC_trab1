@@ -14,6 +14,21 @@ Programando em Paralelo: Pthreads
 #include <pthread.h>
 #include <stdbool.h>
 
+// macros
+#define EMPTY_Q(q) ((q)->first == NULL && (q)->end_q == NULL)
+#define CREATE_QUEUE(q) ({(q)->first = NULL ; (q)->end_q = NULL;})
+#define ADD_V(var, qtd, block) ({   \
+      pthread_mutex_lock(&block);   \
+      var += qtd;                   \
+      pthread_mutex_unlock(&block); \
+      })
+#define SWAP_V(var, new, block) ({  \
+      pthread_mutex_lock(&block);   \
+      var = new;                    \
+      pthread_mutex_unlock(&block); \
+      })
+
+
 typedef struct no {
    char action;
    long num;
@@ -26,8 +41,6 @@ typedef struct {
 } queue;
 
 
-// volatil em algo?
-
 long sum = 0, odd = 0, min = LONG_MAX, max = LONG_MIN;
 bool done = false;
 pthread_mutex_t sum_mutex  = PTHREAD_MUTEX_INITIALIZER;
@@ -38,11 +51,9 @@ pthread_mutex_t q_mutex    = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_cond_t q_condvar   = PTHREAD_COND_INITIALIZER;
 
+// volatil?
 queue q;
 
-void print_q(queue *q);
-bool empty_q (queue *q);
-void create_queue(queue *q);
 task_type *remove_q(queue *q);
 bool insert_q(queue *q, char action, long num);
 
@@ -50,12 +61,12 @@ void *worker(void *arg) {
    long tid = (long)arg;
    task_type *task;
 
-   while (!empty_q(&q) || !done) {                 // enquanto houver serviços OU não ter finalizado
+   while (!EMPTY_Q(&q) || !done) {                  // enquanto houver serviços OU não ter finalizado
       pthread_mutex_lock(&q_mutex);
 
-      while ( empty_q(&q) && !done ) {               // enquanto não houver serviços E não ter finalizado
+      while ( EMPTY_Q(&q) && !done ) {              // enquanto não houver serviços E não ter finalizado
          pthread_cond_wait(&q_condvar, &q_mutex);
-         printf("Thread = %ld received \n", tid);  // thread impar a mais => printf pós wait
+         //printf("Thread = %ld received \n", tid); // thread impar a mais => printf pós wait
       }
 
       task = remove_q(&q);
@@ -65,28 +76,19 @@ void *worker(void *arg) {
          int sleep_i = task->num;
          sleep(sleep_i);
 
-         pthread_mutex_lock(&sum_mutex);
-         sum   += task->num;
-         pthread_mutex_unlock(&sum_mutex);
+         ADD_V(sum, task->num, sum_mutex);
 
          if (task->num % 2 == 1) {
-            pthread_mutex_lock(&odd_mutex);
-            odd++;
-            pthread_mutex_unlock(&odd_mutex);
+            ADD_V(odd, 1, odd_mutex);
          }
          if (task->num < min) {
-            pthread_mutex_lock(&min_mutex);
-            min   = task->num;
-            pthread_mutex_unlock(&min_mutex);
+            SWAP_V(min, task->num, min_mutex);
          }
          if (task->num > max) {
-            pthread_mutex_lock(&max_mutex);
-            max   = task->num;
-            pthread_mutex_unlock(&max_mutex);
+            SWAP_V(max, task->num, max_mutex);
          }
       }
    }
-   // printf("Thread = %ld fim =)\n", tid);
    pthread_exit(NULL);
 }
 
@@ -111,7 +113,7 @@ int main(int argc, char *argv[]) {
                     "Usage: %s [-t <quantidade de thread>] [-f <nome do "
                     "arquivo>]\n",
                     argv[0]);
-            exit(EXIT_FAILURE);  // criar help
+            exit(EXIT_FAILURE);  
       }
    }
 
@@ -129,7 +131,7 @@ int main(int argc, char *argv[]) {
    pthread_t threads[num_threads];
    pthread_attr_t attr;
 
-   create_queue(&q);
+   CREATE_QUEUE(&q);
 
    pthread_attr_init(&attr);
    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
@@ -159,7 +161,10 @@ int main(int argc, char *argv[]) {
    fclose(fin);
    done = true;
 
-   for (i = 0; i < num_threads; i++) pthread_join(threads[i], &status);
+   for (i = 0; i < num_threads; i++){
+      pthread_join(threads[i], &status);
+      free(status);
+   }
 
    printf("%ld %ld %ld %ld\n", sum, odd, min, max);
 
@@ -169,8 +174,6 @@ int main(int argc, char *argv[]) {
 }
 
 bool insert_q(queue *q, char action, long num) {
-   /*Adiciona um item no fim da fila q. Retorna true se
-   operação realizada com sucesso, false caso contrário*/
    task_type *p;
    p = malloc(sizeof(task_type));
 
@@ -189,41 +192,16 @@ bool insert_q(queue *q, char action, long num) {
    return true; 
 }
 
-bool empty_q(queue *q) { return q->first == NULL && q->end_q == NULL; }
-
 task_type *remove_q(queue *q) {
    task_type *p;
-   if (empty_q(q)) {
+   if (EMPTY_Q(q)) {
       return NULL;
    }
 
    p = q->first;
 
-   //*info = p->info; ?
    q->first = p->next;
    if (q->first == NULL) q->end_q = NULL;
 
    return p;
-}
-
-void create_queue(queue *q) {
-   q->first = NULL;
-   q->end_q = NULL;
-}
-
-void print_q(queue *q) {
-   task_type *aux;
-
-   if (q->first == NULL) {
-      printf("\tERRO: Fila empty_q\n");
-      return;
-   }
-
-   aux = q->first;
-
-   while (aux != NULL) {
-      printf(" %c - %ld |", aux->action, aux->num);
-      aux = aux->next;
-   }
-   printf("\n");
 }
