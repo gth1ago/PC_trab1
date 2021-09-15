@@ -14,18 +14,18 @@ Programando em Paralelo: Pthreads
 #include <pthread.h>
 #include <stdbool.h>
 
-// macros
+// diretiva - macros
 #define EMPTY_Q(q) ((q)->first == NULL && (q)->end_q == NULL)
 #define CREATE_QUEUE(q) ({(q)->first = NULL ; (q)->end_q = NULL;})
-#define ADD_V(var, qtd, block) ({   \
-      pthread_mutex_lock(&block);   \
-      var += qtd;                   \
-      pthread_mutex_unlock(&block); \
+#define ADD_V(var, quantity, block) ({ \
+      pthread_mutex_lock(&block);      \
+      var += quantity;                 \
+      pthread_mutex_unlock(&block);    \
       })
-#define SWAP_V(var, new, block) ({  \
-      pthread_mutex_lock(&block);   \
-      var = new;                    \
-      pthread_mutex_unlock(&block); \
+#define SWAP_V(var, new, block) ({     \
+      pthread_mutex_lock(&block);      \
+      var = new;                       \
+      pthread_mutex_unlock(&block);    \
       })
 
 
@@ -66,7 +66,7 @@ void *worker(void *arg) {
 
       while ( EMPTY_Q(&q) && !done ) {              // enquanto não houver serviços E não ter finalizado
          pthread_cond_wait(&q_condvar, &q_mutex);
-         //printf("Thread = %ld received \n", tid); // thread impar a mais => printf pós wait
+         //printf("Thread = %ld received \n", tid); // p thread impar sem signal/broadcast
       }
 
       task = remove_q(&q);
@@ -77,6 +77,7 @@ void *worker(void *arg) {
          sleep(sleep_i);
 
          ADD_V(sum, task->num, sum_mutex);
+
 
          if (task->num % 2 == 1) {
             ADD_V(odd, 1, odd_mutex);
@@ -118,13 +119,13 @@ int main(int argc, char *argv[]) {
    }
 
    if (num_threads <= 0){
-      printf("Quantidade inválidade de Threads!\n");
+      printf("Quantidade inválida de de Threads!\n");
       exit(EXIT_FAILURE);
    }
 
    FILE *fin = fopen(name_file, "r");
    if (!fin) {
-      printf("\nErro ao abrir arquivo!\nVerifique o nome do arquivo\n\n");
+      printf("\nErro ao abrir arquivo!\nVerifique o caminho/nome do arquivo\n\n");
       exit(EXIT_FAILURE);
    }
 
@@ -151,7 +152,6 @@ int main(int argc, char *argv[]) {
          pthread_mutex_unlock(&q_mutex);
       } else if (action == 'e') {
          int sleep_i = num;
-         // printf("\nMestre: sleep(%d)\n", sleep_i);
          sleep(sleep_i);
       } else {
          printf("ERROR: Unrecognized action: '%c'\n", action);
@@ -160,6 +160,8 @@ int main(int argc, char *argv[]) {
    }
    fclose(fin);
    done = true;
+   
+   pthread_cond_signal(&q_condvar);    // uso a mais de thread 
 
    for (i = 0; i < num_threads; i++){
       pthread_join(threads[i], &status);
@@ -168,7 +170,7 @@ int main(int argc, char *argv[]) {
 
    printf("%ld %ld %ld %ld\n", sum, odd, min, max);
 
-   pthread_mutex_destroy(&q_mutex);  // verificar se há outros 
+   pthread_mutex_destroy(&q_mutex);  // verificar 
    pthread_cond_destroy(&q_condvar); 
    return EXIT_SUCCESS;
 }
