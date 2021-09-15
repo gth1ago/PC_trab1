@@ -1,11 +1,10 @@
-# Programando em Paralelo: Pthreads 
+# Programando em Paralelo: Pthreads
 
 * Universidade Estadual de Maringá
 * Programação Concorrente
 * Autor:
-  * Gabriel Thiago   
+  * Gabriel Thiago
 * Setembro 2021
-
 
 ## Projeto
 
