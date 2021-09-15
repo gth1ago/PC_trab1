@@ -10,12 +10,13 @@ Programando em Paralelo: Pthreads
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <stdint.h>
 #include <limits.h>
 #include <pthread.h>
 #include <stdbool.h>
 
 // diretiva - macros
-#define EMPTY_Q(q) ((q)->first == NULL && (q)->end_q == NULL)
+#define EMPTY_Q(q) ((q)->first == NULL)
 #define CREATE_QUEUE(q) ({(q)->first = NULL ; (q)->end_q = NULL;})
 #define ADD_V(var, quantity, block) ({ \
       pthread_mutex_lock(&block);      \
@@ -58,7 +59,7 @@ task_type *remove_q(queue *q);
 bool insert_q(queue *q, char action, long num);
 
 void *worker(void *arg) {
-   long tid = (long)arg;
+   //long tid = (long)arg; // SEM USO
    task_type *task;
 
    while (!EMPTY_Q(&q) || !done) {                  // enquanto houver serviços OU não ter finalizado
@@ -66,18 +67,16 @@ void *worker(void *arg) {
 
       while ( EMPTY_Q(&q) && !done ) {              // enquanto não houver serviços E não ter finalizado
          pthread_cond_wait(&q_condvar, &q_mutex);
-         //printf("Thread = %ld received \n", tid); // p thread impar sem signal/broadcast
       }
 
       task = remove_q(&q);
       pthread_mutex_unlock(&q_mutex);
 
-      if (task) {                                  // se removido
+      if (task){                                    // se removido
          int sleep_i = task->num;
          sleep(sleep_i);
 
          ADD_V(sum, task->num, sum_mutex);
-
 
          if (task->num % 2 == 1) {
             ADD_V(odd, 1, odd_mutex);
@@ -95,8 +94,8 @@ void *worker(void *arg) {
 
 int main(int argc, char *argv[]) {
    int num_threads = -1, opt, i;
-   char *name_file, action;
-   void *status;
+   char *name_file = NULL, action;
+   void *status = NULL;
    long num;
 
    while ((opt = getopt(argc, argv, "t:f:")) != -1) {
@@ -161,8 +160,7 @@ int main(int argc, char *argv[]) {
    fclose(fin);
    done = true;
    
-   pthread_cond_signal(&q_condvar);    // uso a mais de thread 
-
+   pthread_cond_broadcast(&q_condvar);    
    for (i = 0; i < num_threads; i++){
       pthread_join(threads[i], &status);
       free(status);
@@ -170,7 +168,7 @@ int main(int argc, char *argv[]) {
 
    printf("%ld %ld %ld %ld\n", sum, odd, min, max);
 
-   pthread_mutex_destroy(&q_mutex);  // verificar 
+   pthread_mutex_destroy(&q_mutex);  
    pthread_cond_destroy(&q_condvar); 
    return EXIT_SUCCESS;
 }

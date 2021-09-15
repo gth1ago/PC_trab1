@@ -81,3 +81,43 @@ Dicas
 
 
 criterios de avacailiao
+
+------------
+sudo perf stat -o saida.txt -a -r 10 -e branch-instructions,branch-misses,cache-misses,cache-references,cpu-cycles,instructions ./a.out -t 2 -f entrada/entrada1.txt >> restultado.txt
+
+
+Adc. Item 5
+Arquivos de teste:
+    5 arquivos
+    utilizem eles para fazer as analises
+    tem o sequencial e paralelo, pode medir o desempenho de alguma forma
+    quantidade consideravel de tarefas
+    começa com 20 e vai dobrando, por ae
+
+
+
+    passagem do arquivo com -f?
+    thread a escolha para executar?
+        qtd d numero fisico
+    quais o tempo com grande quantidade, a logica para escolher? td a escolha? ou Dicas
+    pode diminuir o sleep? mantem?
+        execuat sequencial uns 3 min e parte p parelala
+    ferramentas de analises, perf pode?
+        bonnus consideravel
+        analisando com os dados desssa forme é q consegue explicar o desempenho do seu programa
+    alguma variavel volatil? pensei na fila ou seria dentro das struct?
+    recomendações de ferramenta p analise de vazamento de memoria?
+        valgrind
+        
+    Colocar no relatório a metodologia
+    sua thread é a main
+    qual sistema oepracional
+    memorias
+    qts nucleos fisicos e logicos
+
+    trocar sequencial p "e" em vez de "w"
+
+
+
+    metodologia
+    outras  resultados
