@@ -87,6 +87,7 @@ void *worker(void *arg) {
          if (task->num > max) {
             SWAP_V(max, task->num, max_mutex);
          }
+         free(task);
       }
    }
    pthread_exit(NULL);

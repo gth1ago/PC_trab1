@@ -1,0 +1,56 @@
+ 
+
+ Performance counter stats for './sum entrada/entrada1.txt' (2 runs):
+
+              1,61 msec task-clock                #    0,000 CPUs utilized            ( +-  0,86% )
+                20      context-switches          #    0,012 M/sec                  
+                 0      cpu-migrations            #    0,000 K/sec                  
+                58      page-faults               #    0,036 M/sec                    ( +-  0,87% )
+         1.910.474      cycles                    #    1,184 GHz                      ( +-  1,72% )
+           346.332      stalled-cycles-frontend   #   18,13% frontend cycles idle     ( +-  1,35% )
+           411.272      stalled-cycles-backend    #   21,53% backend cycles idle      ( +-  5,75% )
+           797.070      instructions              #    0,42  insn per cycle         
+                                                  #    0,52  stalled cycles per insn  ( +-  0,17% )
+           171.044      branches                  #  105,972 M/sec                    ( +-  0,11% )
+     <not counted>      branch-misses                                                 (0,00%)
+
+         149,01192 +- 0,00164 seconds time elapsed  ( +-  0,00% )
+
+Some events weren't counted. Try disabling the NMI watchdog:
+	echo 0 > /proc/sys/kernel/nmi_watchdog
+	perf stat ...
+	echo 1 > /proc/sys/kernel/nmi_watchdog
+
+ Performance counter stats for './par_sum -t 2 -f entrada/entrada2.txt' (5 runs):
+
+              3,12 msec task-clock                #    0,000 CPUs utilized            ( +-  1,07% )
+                45      context-switches          #    0,014 M/sec                    ( +-  1,52% )
+                 0      cpu-migrations            #    0,128 K/sec                    ( +-100,00% )
+                86      page-faults               #    0,028 M/sec                    ( +-  0,23% )
+         4.204.556      cycles                    #    1,350 GHz                      ( +-  8,18% )  (55,13%)
+           597.521      stalled-cycles-frontend   #   14,21% frontend cycles idle     ( +-  3,26% )
+           874.078      stalled-cycles-backend    #   20,79% backend cycles idle      ( +-  3,38% )
+         1.490.757      instructions              #    0,35  insn per cycle         
+                                                  #    0,59  stalled cycles per insn  ( +-  1,16% )
+           316.967      branches                  #  101,747 M/sec                    ( +-  1,10% )
+            20.538      branch-misses             #    6,48% of all branches          ( +- 32,86% )  (44,87%)
+
+        113,010945 +- 0,000436 seconds time elapsed  ( +-  0,00% )
+
+
+ Performance counter stats for './par_sum -t 4 -f entrada/entrada2.txt' (5 runs):
+
+              3,55 msec task-clock                #    0,000 CPUs utilized            ( +-  2,10% )
+                50      context-switches          #    0,014 M/sec                    ( +-  2,61% )
+                 1      cpu-migrations            #    0,169 K/sec                    ( +-100,00% )
+                89      page-faults               #    0,025 M/sec                    ( +-  1,14% )
+         4.096.440      cycles                    #    1,153 GHz                      ( +-  3,26% )  (77,62%)
+           617.553      stalled-cycles-frontend   #   15,08% frontend cycles idle     ( +-  2,38% )
+           947.740      stalled-cycles-backend    #   23,14% backend cycles idle      ( +-  4,77% )
+         1.719.045      instructions              #    0,42  insn per cycle         
+                                                  #    0,55  stalled cycles per insn  ( +-  1,93% )
+           365.789      branches                  #  102,989 M/sec                    ( +-  2,06% )
+            12.579      branch-misses             #    3,44% of all branches          ( +- 47,52% )  (22,38%)
+
+         60,005360 +- 0,000375 seconds time elapsed  ( +-  0,00% )
+

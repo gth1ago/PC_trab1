@@ -1,3 +1,9 @@
+http://eitas.com.br/tutorial/12/39
+https://easyperf.net/blog/2019/10/05/Performance-Analysis-Of-MT-apps
+https://sol.sbc.org.br/livros/index.php/sbc/catalog/download/44/190/406-1?inline=1
+
+perf (Performance Counters for Linux) 
+
 Obs. sec.
     ganhar experiência na implementação de um modelo
     de fila de tarefas mestre/trabalhador de computação paralela
@@ -111,7 +117,7 @@ Arquivos de teste:
         
     Colocar no relatório a metodologia
     sua thread é a main
-    qual sistema oepracional
+    qual sistema operacional
     memorias
     qts nucleos fisicos e logicos
 
@@ -121,3 +127,41 @@ Arquivos de teste:
 
     metodologia
     outras  resultados
+------------
+
+perf
+Utilizar do -r x para repetir a carga de trabalho e pegar o desvio padrão da 
+media para caad contagem
+
+Pegar o IPC, intruções por ciclo, com os resultados (n sei se ele q faz ou a gente)
+
+Pode usar perfils por threed (per-thread, per-process and per-cpu)
+com record, report, annotate
+ae cria o perf.data
+e depois analisa com report e annotate
+------
+A coluna Overhead indica a porcentagem das amostras gerais coeltadas na funcao correspondente
+A segunda coluna relata o processo da qual foram coletaras
+Em per thread e cpu é sempre o comando que foram monitorada
+A quarta coluna indica o nivel de privilegio que a amostra foi obtida, qdo o porgama tava 
+em execucao quando foi interrompida
+    [.] user level
+    [k] kernel level
+    [g] virtualizacao kernel level
+    [u] guest user space
+    [h] hypervisor
+A ultima coluna mostra o nome do simbolo
+
+Analise com perf annotate
+compile com -ggdb para obter estes detalhe
+-----------
+Após, é possível medir os contadores de uma aplicação especifica com o comando:
+$ perf stat -e cache-misses,cache-references ./mult 2048
+
+A partir disso, pode-se fazer alguma otimização de cache e executar novamente:
+$ perf stat -e cache-misses,cache-references ./mult 2048
+
+
+------
+coletei 5 informacao, elas sao relevantes? 
+Usar so as relevantes
