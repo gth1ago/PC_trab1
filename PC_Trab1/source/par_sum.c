@@ -15,7 +15,7 @@ Programando em Paralelo: Pthreads
 #include <pthread.h>
 #include <stdbool.h>
 
-// diretiva - macros
+// diretivas - macros
 #define EMPTY_Q(q) ((q)->first == NULL)
 #define CREATE_QUEUE(q) ({(q)->first = NULL ; (q)->end_q = NULL;})
 #define ADD_V(var, quantity, block) ({ \
@@ -28,7 +28,7 @@ Programando em Paralelo: Pthreads
       var = new;                       \
       pthread_mutex_unlock(&block);    \
       })
-
+// verificar mutex
 
 typedef struct no {
    char action;
@@ -44,6 +44,8 @@ typedef struct {
 
 long sum = 0, odd = 0, min = LONG_MAX, max = LONG_MIN;
 bool done = false;
+
+// verificar mutex
 pthread_mutex_t sum_mutex  = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t odd_mutex  = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t min_mutex  = PTHREAD_MUTEX_INITIALIZER;
@@ -52,14 +54,12 @@ pthread_mutex_t q_mutex    = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_cond_t q_condvar   = PTHREAD_COND_INITIALIZER;
 
-// volatil?
 queue q;
 
 task_type *remove_q(queue *q);
 bool insert_q(queue *q, char action, long num);
 
 void *worker(void *arg) {
-   //long tid = (long)arg; // SEM USO
    task_type *task;
 
    while (!EMPTY_Q(&q) || !done) {                  // enquanto houver serviços OU não ter finalizado

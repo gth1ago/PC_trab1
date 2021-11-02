@@ -6,7 +6,7 @@
 
 echo -e "Iniciando..."
 
-make
+make all
 mkdir -p resultados
 
 # entrada1..5 com thread 1..4
