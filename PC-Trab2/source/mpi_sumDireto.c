@@ -31,30 +31,6 @@
  * \                                                                                                   |
  *  ---------------------------------------------------------------------------------------------------
  * 
- * Questao
- *    Como funciona o recebimento do MPI_Isend // Irecv
- *       primitivas - status
- *    n vi mt impacto isend irevc e wait
- *       mpi cuida boa parte dessas coisa
- *    Fila necessária (?)
- *    Somente mestre altera a fila, sem bloqueios (?)
- *    As Variaveis também
- *    0.8s deplay comparado ao threads (?)
- *    num de trab?
- *       a vontade :)
- *       so n fz merd
- *    mpirun -n 10 --oversubscribe a.out -> trab
- *       add isso de -> custo de passagem de mensagem - tem uma analise disso - envio e recebimento de msg
- *       pthread n tem passagem d msg ae n daria
- *       
- *    Referencias/Docu pra entender o desempenho especifico
- *      perf n coleta msg se pa
- *    tem uma bib.
- *       q compila junto com cod. e ae dps da execução ele mostra varias metricas analisadas (msg rec, enviada..)
- *       ele vai caça o nome da biblioteca 
- * 
- *    tempo gasto em lock, barreira, no pthread era massa, quanto maior for mais perda de des. tem
- *    ja aqui qto mais msg tiver, pior
  */
 
 #include <limits.h>

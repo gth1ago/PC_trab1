@@ -5,22 +5,30 @@
  *
  *                                            Representação
  *  ---------------------------------------------------------------------------------------------------
- * | \ |               Worker                                        Master | |
- * ↓                                             ↓ | |                 ↓ tag 1
- * && id                    ↓                                   | | →→→→→→→→→>
- * ocioso   →→→→→→→→→→→→→→→→→→→→→→→→→→→→>        recebe   <←←←←←←←←←←←←←←←←←← |
- * |  ↗                                                         ↙     ↘ ↖ | | ↑
- * ↙         ↘                      ↑ loop  | | ↑ tag 0                ↓
- * →→→→→→→→ ↓           ↑       | | ↑            recebe <←←←←←←←←←←←←←←←←←←←←←←←
- * ( envia tarefa    ou     avisa final )  ↑       | | ↑            ↙   ↘ x 0 |
- * | ↑       x  ↙       ↘  0 ↓                | | ↑         ↓          →→→→↘ ↓ |
- * |  ↖ <←←← tarefado       se final ↓                | | ↓ ↙                 |
- * |                           ↓   (sai do loop) ↙                   | | ↓ ↙ |
- * |                  retorna resultados    →→→→→→→→→→→→→→→→→→>   recebe
- * resultados                    | |                           ↓ ↓ | | ↓ ↓ | |
- * finaliza                                Junta resultados                    |
- * |                                                                     ↓ | |
- * ↓                             | | finaliza                          | \ |
+ * |                                                                                                   \
+ * |               Worker                                        Master                                |
+ * |                 ↓                                             ↓                                   |
+ * |                 ↓              tag 1 && id                    ↓                                   |
+ * |    →→→→→→→→→> ocioso   →→→→→→→→→→→→→→→→→→→→→→→→→→→→>        recebe   <←←←←←←←←←←←←←←←←←←          |
+ * |  ↗                                                         ↙     ↘                       ↖        |
+ * | ↑                                                        ↙         ↘                      ↑ loop  |
+ * | ↑                                  tag 0                ↓            →→→→→→→→ ↓           ↑       |
+ * | ↑            recebe     <←←←←←←←←←←←←←←←←←←←←←←←  ( envia tarefa    ou     avisa final )  ↑       |
+ * | ↑            ↙   ↘                                        x                      0                |
+ * | ↑       x  ↙       ↘  0                                                          ↓                |
+ * | ↑         ↓          →→→→↘                                                       ↓                |
+ * |  ↖ <←←← tarefado       se final                                                  ↓                |
+ * |                           ↓                                                     ↙                 |
+ * |                           ↓   (sai do loop)                                   ↙                   |
+ * |                           ↓                                                 ↙                     |
+ * |                  retorna resultados    →→→→→→→→→→→→→→→→→→>   recebe resultados                    |
+ * |                           ↓                                         ↓                             |
+ * |                           ↓                                         ↓                             |
+ * |                       finaliza                                Junta resultados                    |
+ * |                                                                     ↓                             |
+ * |                                                                     ↓                             |
+ * |                                                                 finaliza                          |
+ * \                                                                                                   |
  *  ---------------------------------------------------------------------------------------------------
  */
 
@@ -29,9 +37,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>  // medir clock
 #include <unistd.h>
-#include <string.h>
 
 #define MASTER 0
 
@@ -124,7 +132,7 @@ void master(int world_rank, int count_worker) {
    while (fscanf(fin, "%c %ld\n", &action, &num) == 2) {
       lineFile++;
    }
-   
+
    fseek(fin, 0, SEEK_SET);
 
    MPI_Barrier(MPI_COMM_WORLD);
@@ -152,21 +160,20 @@ void master(int world_rank, int count_worker) {
    }
    fclose(fin);
 
+// printf("Valores: \n");
+// for (int i = 0; i < lineFile; i++){
+//    printf("%c %ld\n", buffer[i][1], buffer[i][0]);
+// }
 
-   // printf("Valores: \n");
-   // for (int i = 0; i < lineFile; i++){
-   //    printf("%c %ld\n", buffer[i][1], buffer[i][0]);
-   // }
-
-   // printf("\t-fim-\n");
-   #define FALSE 0
-   #define TRUE  1
+// printf("\t-fim-\n");
+#define FALSE 0
+#define TRUE 1
 
    int flagEOF = FALSE;
-   int index   = FALSE;
+   int index = FALSE;
 
    while (!flagEOF) {
-      long task   = buffer[index][0];
+      long task = buffer[index][0];
       char action = buffer[index][1];
       int recebidoInterno = 0;
 
@@ -183,7 +190,6 @@ void master(int world_rank, int count_worker) {
          int readyInt;
 
          while (!flagInterno) {
-
             recebidoInterno = FALSE;
             index++;
 
@@ -192,14 +198,14 @@ void master(int world_rank, int count_worker) {
                break;
             }
 
-            long taskInt   = buffer[index][0];
+            long taskInt = buffer[index][0];
             char actionInt = buffer[index][1];
 
             if (actionInt == 'p') {
                insert_q(&q, actionInt, taskInt);
             } else {
                int sleep_i = taskInt;
-               //printf("[Mestre] Dormindo %d\n", sleep_i);
+               // printf("[Mestre] Dormindo %d\n", sleep_i);
                sleep(sleep_i);
             }
 
@@ -212,21 +218,21 @@ void master(int world_rank, int count_worker) {
          }
       } else {
          task_type *task = remove_q(&q);
-         //printf("[Mestre] Enviando para (%d)- %ld\n", world_id, task->num);
+         // printf("[Mestre] Enviando para (%d)- %ld\n", world_id, task->num);
          MPI_Send(&task->num, 1, MPI_LONG, world_id, 0, MPI_COMM_WORLD);
       }
 
       if (recebidoInterno) {
          task_type *task = remove_q(&q);
-         //printf("[Mestre] Enviando para (%d)- %ld\n", world_id, task->num);
+         // printf("[Mestre] Enviando para (%d)- %ld\n", world_id, task->num);
          MPI_Send(&task->num, 1, MPI_LONG, world_id, 0, MPI_COMM_WORLD);
       }
 
       if (flagEOF) {
-         //printf("[Mestre] Aguardando\n");
+         // printf("[Mestre] Aguardando\n");
          MPI_Wait(&request, MPI_STATUS_IGNORE);
          task_type *task = remove_q(&q);
-         //printf("[Mestre] Enviando para (%d) - %ld\n", world_id, task->num);
+         // printf("[Mestre] Enviando para (%d) - %ld\n", world_id, task->num);
          MPI_Send(&task->num, 1, MPI_LONG, world_id, 0, MPI_COMM_WORLD);
       }
 
@@ -234,7 +240,7 @@ void master(int world_rank, int count_worker) {
       if (index >= lineFile) flagEOF = TRUE;
    }
 
-   //printf("Parte meio \n");
+   // printf("Parte meio \n");
 
    while (!EMPTY_Q(&q)) {
       task_type *task = remove_q(&q);  // se pa block aqui
@@ -242,11 +248,11 @@ void master(int world_rank, int count_worker) {
       MPI_Recv(&world_id, 1, MPI_INT, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD,
                MPI_STATUS_IGNORE);
 
-      //printf("\nEnviando para Worker %d - Num: %ld\n", world_id, task->num);
+      // printf("\nEnviando para Worker %d - Num: %ld\n", world_id, task->num);
       MPI_Send(&task->num, 1, MPI_LONG, world_id, 0, MPI_COMM_WORLD);
    }
 
-   //printf("Parte final\n\n");
+   // printf("Parte final\n\n");
    for (int i = 1; i <= count_worker; i++) {
       long retorno[4];
       long flag = 0;
@@ -256,7 +262,7 @@ void master(int world_rank, int count_worker) {
       // printf("\nEnviando p Worker %d!\n", world_id);
       MPI_Send(&flag, 1, MPI_LONG, world_id, 0, MPI_COMM_WORLD);
       // MPI_Isend(&flag, 1, MPI_LONG, i, 0, MPI_COMM_WORLD, &request);
-      //printf("Worker %d Finalizou\n", world_id);
+      // printf("Worker %d Finalizou\n", world_id);
 
       MPI_Recv(&retorno, 4, MPI_LONG, world_id, 0, MPI_COMM_WORLD,
                MPI_STATUS_IGNORE);
@@ -332,7 +338,6 @@ task_type *remove_q(queue *q) {
    return p;
 }
 
-
 /*  Marcar tempo
  *    clock_t begin = clock();
  *    clock_t end = clock();
@@ -340,32 +345,32 @@ task_type *remove_q(queue *q) {
  *    printf("Tempo Espera = %f\n\n", time_spent);
  */
 
-   /* flagCabouArquivo = 0
-   *
-   * cabou o arquivo
-   *    flagCabouArquivo = 1
-   *
-   * percorrer o vetor
-   * adiciona na fila
-   * verifica se tem ocioso
-   * se nao
-   *    continua lendo o vetor
-   *
-   *    acabou arquivo
-   *       flagCabouArquivo = 1
-   *       break
-   *
-   *    se for p
-   *       adiciona na fila
-   *    se for e
-   *       dorme
-   *
-   *    verifica se teve resposta
-   *    se nao
-   *       continua o loop
-   *    se teve
-   *       sai do laço
-   * se tiver
-   *    retira da fila e envia
-   *
-   */
+/* flagCabouArquivo = 0
+ *
+ * cabou o arquivo
+ *    flagCabouArquivo = 1
+ *
+ * percorrer o vetor
+ * adiciona na fila
+ * verifica se tem ocioso
+ * se nao
+ *    continua lendo o vetor
+ *
+ *    acabou arquivo
+ *       flagCabouArquivo = 1
+ *       break
+ *
+ *    se for p
+ *       adiciona na fila
+ *    se for e
+ *       dorme
+ *
+ *    verifica se teve resposta
+ *    se nao
+ *       continua o loop
+ *    se teve
+ *       sai do laço
+ * se tiver
+ *    retira da fila e envia
+ *
+ */

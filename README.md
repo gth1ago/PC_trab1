@@ -16,3 +16,7 @@
 * Leitura e distribuição de processamentos para tarefas utilizando MPI
 
 Códigos em ./TrabX/source
+
+----
+tempo gasto em lock, barreira, no pthread era massa, quanto maior for mais perda de desempenho tem
+ja aqui qto mais msg tiver, pior
