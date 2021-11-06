@@ -2,6 +2,26 @@
  *
  * Comp.: mpicc program.c
  * Exec.: mpirun -n 10 --oversubscribe a.out
+ *
+ *                                            Representação
+ *  ---------------------------------------------------------------------------------------------------
+ * | \ |               Worker                                        Master | |
+ * ↓                                             ↓ | |                 ↓ tag 1
+ * && id                    ↓                                   | | →→→→→→→→→>
+ * ocioso   →→→→→→→→→→→→→→→→→→→→→→→→→→→→>        recebe   <←←←←←←←←←←←←←←←←←← |
+ * |  ↗                                                         ↙     ↘ ↖ | | ↑
+ * ↙         ↘                      ↑ loop  | | ↑ tag 0                ↓
+ * →→→→→→→→ ↓           ↑       | | ↑            recebe <←←←←←←←←←←←←←←←←←←←←←←←
+ * ( envia tarefa    ou     avisa final )  ↑       | | ↑            ↙   ↘ x 0 |
+ * | ↑       x  ↙       ↘  0 ↓                | | ↑         ↓          →→→→↘ ↓ |
+ * |  ↖ <←←← tarefado       se final ↓                | | ↓ ↙                 |
+ * |                           ↓   (sai do loop) ↙                   | | ↓ ↙ |
+ * |                  retorna resultados    →→→→→→→→→→→→→→→→→→>   recebe
+ * resultados                    | |                           ↓ ↓ | | ↓ ↓ | |
+ * finaliza                                Junta resultados                    |
+ * |                                                                     ↓ | |
+ * ↓                             | | finaliza                          | \ |
+ *  ---------------------------------------------------------------------------------------------------
  */
 
 #include <limits.h>
@@ -11,6 +31,7 @@
 #include <stdlib.h>
 #include <time.h>  // medir clock
 #include <unistd.h>
+#include <string.h>
 
 #define MASTER 0
 
@@ -39,20 +60,26 @@ bool insert_q(queue *q, char action, long num);
 
 void worker(int world_id) {
    // printf("Worker %d OK :)\n", world_id);
-   //int flag = 1;
+   // int flag = 1;
    long sum = 0, odd = 0, min = LONG_MAX, max = LONG_MIN, num_task = 1;
 
    MPI_Request request = MPI_REQUEST_NULL;
 
+   MPI_Barrier(MPI_COMM_WORLD);
+
    while (num_task != 0) {
       // avisa que está ocioso
+      // printf("\n[Worked] (%d) enviando ocioso\n", world_id);
       MPI_Send(&world_id, 1, MPI_INT, MASTER, 1, MPI_COMM_WORLD);
       // MPI_Isend(&world_id, 1, MPI_INT, MASTER, 1, MPI_COMM_WORLD, &request);
 
+      // MPI_Wait(&request, MPI_STATUS_IGNORE);
+      // printf("[Worked] (%d) enviado\n", world_id);
       MPI_Recv(&num_task, 1, MPI_LONG, MASTER, 0, MPI_COMM_WORLD,
                MPI_STATUS_IGNORE);
 
-      if (num_task != 0) {
+      // printf("[Worked] (%d) Recebeu Task\n", world_id);
+      if (num_task > 0) {
          int sleep_i = num_task;
          sleep(sleep_i);
          sum += num_task;
@@ -67,24 +94,20 @@ void worker(int world_id) {
             max = num_task;
          }
       }
-      // else 
-      //  flag = 0;
    }
 
-   // enviar vetor final com os resultados
+   // // enviar vetor final com os resultados
    long retorno[] = {sum, odd, min, max};
 
-   // MPI_Send(&retorno, 4, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
-   MPI_Isend(&retorno, 4, MPI_LONG, MASTER, 0, MPI_COMM_WORLD, &request);
+   MPI_Send(&retorno, 4, MPI_LONG, MASTER, 0, MPI_COMM_WORLD);
+   // //MPI_Isend(&retorno, 4, MPI_LONG, MASTER, 0, MPI_COMM_WORLD, &request);
 }
 
-// test2 num pequeno
 void master(int world_rank, int count_worker) {
    char action, *name_file = "./test/test3.txt";
    long sum = 0, odd = 0, min = LONG_MAX, max = LONG_MIN, num;
-   int world_id;
+   int world_id, ready;
    queue q;
-   // printf("Numero de trabs: %d\n", count_worker);
 
    FILE *fin = fopen(name_file, "r");
    if (!fin) {
@@ -93,55 +116,150 @@ void master(int world_rank, int count_worker) {
       exit(EXIT_FAILURE);
    }
 
+   MPI_Request request = MPI_REQUEST_NULL;
+   // MPI_Request requests[3];// = MPI_REQUEST_NULL;
+   //  MPI_Status status;
+   int lineFile = 0;
    CREATE_QUEUE(&q);
+   while (fscanf(fin, "%c %ld\n", &action, &num) == 2) {
+      lineFile++;
+   }
+   
+   fseek(fin, 0, SEEK_SET);
+
+   MPI_Barrier(MPI_COMM_WORLD);
+   int qtd = 0;
+
+   char buffer[lineFile][2];
+   // tarefa[x] = task
+   // tarefa[y] = 'p' ou 'e'
+   // p = 0
+   // e = 1
+   // p[0][0] = num task
+   // p[0][1] = 'p' ou 'e'
+
+   int u = 0;
 
    while (fscanf(fin, "%c %ld\n", &action, &num) == 2) {
-      if (action == 'p' || action == 'e') {
-         insert_q(&q, action, num);
+      if (action == 'e' || action == 'p') {
+         buffer[u][0] = num;
+         buffer[u][1] = action;
       } else {
          printf("ERROR: Unrecognized action: '%c'\n", action);
          exit(EXIT_FAILURE);
       }
+      u++;
    }
    fclose(fin);
 
-   //  TIME = 0.000065
 
-   // world_id é o worker ocioso
+   // printf("Valores: \n");
+   // for (int i = 0; i < lineFile; i++){
+   //    printf("%c %ld\n", buffer[i][1], buffer[i][0]);
+   // }
 
-   // MPI_Request request = MPI_REQUEST_NULL;
-   // MPI_Status status;
-   while (!EMPTY_Q(&q)) {
-      task_type *task = remove_q(&q);
+   // printf("\t-fim-\n");
+   #define FALSE 0
+   #define TRUE  1
 
-      if (task->action == 'p') {
-         // MPI_Irecv(&world_id, 1, MPI_INT, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &request);
-         MPI_Recv(&world_id, 1, MPI_INT, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD,
-                  MPI_STATUS_IGNORE);
-         // MPI_Wait(&request, &status);
+   int flagEOF = FALSE;
+   int index   = FALSE;
 
-         // printf("Aguardando p envio\n");
+   while (!flagEOF) {
+      long task   = buffer[index][0];
+      char action = buffer[index][1];
+      int recebidoInterno = 0;
+
+      insert_q(&q, action, task);
+
+      MPI_Irecv(&world_id, 1, MPI_INT, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD,
+                &request);
+
+      MPI_Test(&request, &ready, MPI_STATUS_IGNORE);
+      if (!ready) {
+         // segue a leitura
+
+         int flagInterno = FALSE;
+         int readyInt;
+
+         while (!flagInterno) {
+
+            recebidoInterno = FALSE;
+            index++;
+
+            if (index == lineFile) {
+               flagEOF = TRUE;
+               break;
+            }
+
+            long taskInt   = buffer[index][0];
+            char actionInt = buffer[index][1];
+
+            if (actionInt == 'p') {
+               insert_q(&q, actionInt, taskInt);
+            } else {
+               int sleep_i = taskInt;
+               //printf("[Mestre] Dormindo %d\n", sleep_i);
+               sleep(sleep_i);
+            }
+
+            MPI_Test(&request, &readyInt, MPI_STATUS_IGNORE);
+            if (readyInt) {
+               flagInterno = TRUE;
+               recebidoInterno = TRUE;
+               // recebeu
+            }
+         }
+      } else {
+         task_type *task = remove_q(&q);
+         //printf("[Mestre] Enviando para (%d)- %ld\n", world_id, task->num);
          MPI_Send(&task->num, 1, MPI_LONG, world_id, 0, MPI_COMM_WORLD);
-         // printf("\nEnviado para Worker %d - Num: %ld\n", world_id, task->num);
-      } else if (task->action == 'e') {
-         int sleep_i = task->num;
-         sleep(sleep_i);
       }
-   }
-   // TIME = 0.000173 
 
-   // rece dos ocioso e avisa que acabou
-   // e recebe os resultados deles
+      if (recebidoInterno) {
+         task_type *task = remove_q(&q);
+         //printf("[Mestre] Enviando para (%d)- %ld\n", world_id, task->num);
+         MPI_Send(&task->num, 1, MPI_LONG, world_id, 0, MPI_COMM_WORLD);
+      }
+
+      if (flagEOF) {
+         //printf("[Mestre] Aguardando\n");
+         MPI_Wait(&request, MPI_STATUS_IGNORE);
+         task_type *task = remove_q(&q);
+         //printf("[Mestre] Enviando para (%d) - %ld\n", world_id, task->num);
+         MPI_Send(&task->num, 1, MPI_LONG, world_id, 0, MPI_COMM_WORLD);
+      }
+
+      index++;
+      if (index >= lineFile) flagEOF = TRUE;
+   }
+
+   //printf("Parte meio \n");
+
+   while (!EMPTY_Q(&q)) {
+      task_type *task = remove_q(&q);  // se pa block aqui
+
+      MPI_Recv(&world_id, 1, MPI_INT, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD,
+               MPI_STATUS_IGNORE);
+
+      //printf("\nEnviando para Worker %d - Num: %ld\n", world_id, task->num);
+      MPI_Send(&task->num, 1, MPI_LONG, world_id, 0, MPI_COMM_WORLD);
+   }
+
+   //printf("Parte final\n\n");
    for (int i = 1; i <= count_worker; i++) {
       long retorno[4];
       long flag = 0;
 
-      MPI_Recv(&world_id, 1, MPI_INT, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      MPI_Recv(&world_id, 1, MPI_INT, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD,
+               MPI_STATUS_IGNORE);
+      // printf("\nEnviando p Worker %d!\n", world_id);
       MPI_Send(&flag, 1, MPI_LONG, world_id, 0, MPI_COMM_WORLD);
       // MPI_Isend(&flag, 1, MPI_LONG, i, 0, MPI_COMM_WORLD, &request);
       //printf("Worker %d Finalizou\n", world_id);
 
-      MPI_Recv(&retorno, 4, MPI_LONG, world_id, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      MPI_Recv(&retorno, 4, MPI_LONG, world_id, 0, MPI_COMM_WORLD,
+               MPI_STATUS_IGNORE);
       // MPI_Irecv(&retorno, 4, MPI_INT, i, 0, MPI_COMM_WORLD, &request);
 
       sum += retorno[0];
@@ -150,22 +268,7 @@ void master(int world_rank, int count_worker) {
       if (min > retorno[2]) min = retorno[2];
 
       if (max < retorno[3]) max = retorno[3];
-      /* Tempo 1 = 15.917254 um dos work ta com +- 0.9 de delay
-       * Tempo 2 = 3.921864
-       * Tempo 3 = 0.000031
-       * Tempo 4 = 0.000035
-       * Tempo 5 = 0.000026
-       * Tempo 6 = 0.000041
-       * Tempo 7 = 0.000023
-       * Tempo 8 = 0.000013
-       * Tempo 9 = 0.000091
-       */
    }
-   // TIME FUNCAO = 19.788624
-   // TIME TOTAL = 19.846149
-
-
-   // printf("Master: %d Finalizado!\nCerto :)\n", world_rank);
 
    printf("%ld %ld %ld %ld\n", sum, odd, min, max);
 }
@@ -229,66 +332,40 @@ task_type *remove_q(queue *q) {
    return p;
 }
 
-// void exibir_fila(queue *q) {
-//    task_type *aux;
-
-//    if (q->first == NULL) {
-//       printf("\tERRO: Fila vazia\n");
-//       return;
-//    }
-
-//    aux = q->first;
-//    printf("\nFila: ");
-//    while (aux != NULL) {
-//       printf(" %c - %d |", aux->action, aux->num);
-//       aux = aux->next;
-//    }
-//    printf("\n");
-// }
-
-/* MPI_Send(&token, 5, MPI_INT, worker, 0, MPI_COMM_WORLD);
- * buf = estrutura onde recebe a mensagem, regiao q vai receber
- * count = quantidade de dados
- * datatype =
- * source = de quem vai receber (MPI_any para receber de qualquer trabalhador)
- * tag = inteiro = para gerenciar as mensagens, diferenciar as msg = opcional
- * MPI_Comm comm = comunicador, tem global, é um canal de comunicação, e um
- *             processo so consegue enviar msg d um p outro só se pertencerem ao
- * mesmo comunicador se quero criar grupo de processos, defino 2 comunicador
- * (tem a chamada p criar) no 1 coloco "5" processo e no outro tantos, ae os q
- * tao dentro d um troca msg mas do 1 nao consegue enviar para o 2, se for
- * vincular os dois grupos cria um 3 comunicador e adiciona UM processo só de
- * cada grupo, ae pode troca pros dois grupo quer enviar msg p um grupo usa o
- * dele, pra outro, uso o outro status = aviso p se chegou ao destino final
- */
-
-/* Mestre tem a fila e envia a tarefa para os trabalhadores ociosos
- * Por sua vez os ociosos tem que avisar que estão ociosos
- * O mestre entao recebe a informação e envia para eles
- */
-
-/* VER O TIPO DE SEND
- *
- * send com envio de buffer ou nao
- *       define o buffer que são onde os processo vao enviar/receber mensagens
- * envio bloqueante
- *    o processo so continua quando o recebedor recebe a mensagem
- *    Pq o recebedor recebe envia de volta um OK
- *    Quando ele recebe o OK a acao continua
- * envio desbloqueante
- *      Envia a mensagme e foda-se se recebeu ou nao
- *
- * Situações que usam o bloqeuanado e situações que usam o não bloqueante
- * MPI_Isend (TENTA USA ESSE, envio sem bloqueio)
- * MPI_Test
- * MPI_Wait (espera receber)
- * le os bagui d cada um p saber
- */
-
 
 /*  Marcar tempo
  *    clock_t begin = clock();
  *    clock_t end = clock();
  *    double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
  *    printf("Tempo Espera = %f\n\n", time_spent);
- */ 
+ */
+
+   /* flagCabouArquivo = 0
+   *
+   * cabou o arquivo
+   *    flagCabouArquivo = 1
+   *
+   * percorrer o vetor
+   * adiciona na fila
+   * verifica se tem ocioso
+   * se nao
+   *    continua lendo o vetor
+   *
+   *    acabou arquivo
+   *       flagCabouArquivo = 1
+   *       break
+   *
+   *    se for p
+   *       adiciona na fila
+   *    se for e
+   *       dorme
+   *
+   *    verifica se teve resposta
+   *    se nao
+   *       continua o loop
+   *    se teve
+   *       sai do laço
+   * se tiver
+   *    retira da fila e envia
+   *
+   */

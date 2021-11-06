@@ -26,6 +26,7 @@
 *.x86_64
 *.hex
 sum
+par
 par_sum
 
 # compress
