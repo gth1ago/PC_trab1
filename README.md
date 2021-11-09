@@ -10,13 +10,11 @@
 ## Projeto
 
 * Trabalho 1
-* Leitura e distribuições de processamentos para tarefas utilizando Threads
+  * Leitura e distribuições de processamentos para tarefas utilizando Threads
 
 * Trabalho 2
-* Leitura e distribuição de processamentos para tarefas utilizando MPI
+  * Leitura e distribuição de processamentos para tarefas utilizando MPI
 
-Códigos em ./TrabX/source
+Códigos em ./TrabX/source/
 
 ----
-tempo gasto em lock, barreira, no pthread era massa, quanto maior for mais perda de desempenho tem
-ja aqui qto mais msg tiver, pior
