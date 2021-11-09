@@ -12,10 +12,10 @@
 * Trabalho 2
 * Leitura e distribuições de processamentos para tarefas
 * Utilizando MPI
-* 
-Install:
-  Tau Commander
-  MPI
+
+## Install:
+ * Tau Commander
+ * MPI
 
 Códigos em ./source
 
@@ -25,7 +25,7 @@ Em "analises" está as análises utilizadas
                    As análises estão salvas em ./analises/.tau/
 
 Vale ressaltar a instalação de TAU:
-
+```bash
    $ sudo su
    $ wget http://fs.paratools.com/taucmdr/taucmdr-1.4.0-Linux-x86_64.tar.gz
    $ tar -xf taucmdr-1.4.0-Linux-x86_64.tar.gz
@@ -51,5 +51,4 @@ Vale ressaltar a instalação de TAU:
    $ tau show
    $ tau trial show
    $ tau trial show --pofile-tool pprof
-
-
+```
