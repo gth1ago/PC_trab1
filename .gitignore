@@ -31,3 +31,6 @@ par_sum
 
 # compress
 *.zip
+
+# dir
+analises/
