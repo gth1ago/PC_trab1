@@ -19,3 +19,5 @@ script.sh = rodar entrada1-5
 script_perf.sh = roda com perf
 
 Códigos em ./source
+
+Decrição em ./Atv_3a_P_C_.pdf
