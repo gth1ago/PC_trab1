@@ -15,6 +15,9 @@
 * Trabalho 2
   * Leitura e distribuição de processamentos para tarefas utilizando MPI
 
+* Trabalho 3
+  * Algoritmo fdtd-2d: SMP, UDP, MPI - upcc
+
 Códigos em ./TrabX/source/
 
 ----
